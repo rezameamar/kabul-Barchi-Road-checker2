@@ -1,0 +1,76 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+    <title>نقشه سرک‌های بَرچی کابل</title>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+    <style>
+        #map { height: 90vh; }
+        body { font-family: sans-serif; text-align: center; }
+        input { margin: 5px; }
+    </style>
+</head>
+<body>
+    <h2>نقشه بررسی موقعیت نسبت به سرک‌های بَرچی کابل</h2>
+    <div id="map"></div>
+    <button onclick="locateUser()">مکان فعلی من</button>
+    <br>
+    <input type="text" id="xCoord" placeholder="X (Longitude)">
+    <input type="text" id="yCoord" placeholder="Y (Latitude)">
+    <button onclick="showCoordinates()">نمایش نقطه وارد شده</button>
+
+    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/@turf/turf@6.5.0/turf.min.js"></script>
+    <script>
+        var map = L.map('map').setView([34.5, 69.1], 13);
+
+        L.tileLayer('https://api.mapbox.com/styles/v1/mapbox/satellite-v9/tiles/{z}/{x}/{y}?access_token=pk.eyJ1IjoiZXhhbXBsZSIsImEiOiJja2s4bGZ2eWgwMDAwMnZtbWZ0bWZ2bWZzIn0.abc123', {
+            attribution: '© Mapbox',
+            maxZoom: 18
+        }).addTo(map);
+
+        var roadLayer;
+        fetch('https://raw.githubusercontent.com/rezameamar/kabul-Barchi-Road-checker2/main/Sub_road%20line.json')
+            .then(res => res.json())
+            .then(data => {
+                roadLayer = L.geoJSON(data).addTo(map);
+            });
+
+        function locateUser() {
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(function(position) {
+                    var lat = position.coords.latitude;
+                    var lon = position.coords.longitude;
+                    var userPoint = turf.point([lon, lat]);
+                    L.marker([lat, lon]).addTo(map).bindPopup("موقعیت فعلی شما").openPopup();
+                    map.setView([lat, lon], 15);
+
+                    var minDistance = Infinity;
+                    roadLayer.eachLayer(function(layer) {
+                        var line = layer.feature;
+                        var distance = turf.pointToLineDistance(userPoint, line, {units: 'meters'});
+                        if (distance < minDistance) minDistance = distance;
+                    });
+
+                    alert("فاصله شما از نزدیک‌ترین سرک: " + minDistance.toFixed(2) + " متر");
+                });
+            } else {
+                alert("مرورگر شما از مکان‌یابی پشتیبانی نمی‌کند.");
+            }
+        }
+
+        function showCoordinates() {
+            var x = parseFloat(document.getElementById('xCoord').value);
+            var y = parseFloat(document.getElementById('yCoord').value);
+            if (!isNaN(x) && !isNaN(y)) {
+                L.marker([y, x]).addTo(map).bindPopup("نقطه وارد شده").openPopup();
+                map.setView([y, x], 15);
+            } else {
+                alert("لطفاً مختصات معتبر وارد کنید.");
+            }
+        }
+    </script>
+</body>
+</html>
